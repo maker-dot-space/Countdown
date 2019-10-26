@@ -38,7 +38,12 @@ class Counter(object):
         self.alarm_image = pygame.image.load(FNAME_ALARM).convert()
         self.alarm_image.set_colorkey((255, 255, 255), pygame.RLEACCEL)
         screen_rect = pygame.display.get_surface().get_rect()
-        self.screen_center = screen_rect.center
+
+        # --------------------------------------------------------- #
+        # Next Line Controls where the Counter will appear on screen
+        self.screen_center = screen_rect.center #(100,100)
+        # --------------------------------------------------------- #
+
         self.min_to_count = min_to_count
         self.speed = ANIMATION_SPEED
         self.teta = 0
@@ -85,6 +90,9 @@ class Counter(object):
             m = str(m) if m > 9 else '0' + str(m)
             s = str(s) if s > 9 else '0' + str(s)
             text = h + ':' + m + ':' + s
+            
+            # Next Line Controls Countdown Timer Color
+            #TEXT_COLOR = (102,255,0)
             if TEXT_BACK_COLOR:
                 self.image = self.fnt.render(text, True, TEXT_COLOR,
                                              TEXT_BACK_COLOR)
@@ -109,7 +117,8 @@ def main():
 
     # Initialize pygame.
     pygame.init()
-    pygame.display.set_mode((0, 0), FULLSCREEN)
+    #pygame.display.set_mode((0, 0), FULLSCREEN)
+    pygame.display.set_mode((800, 600))
     screen = pygame.display.get_surface()
     screen_rect = pygame.display.get_surface().get_rect()
     size = screen_rect.size
@@ -120,19 +129,28 @@ def main():
     # Draw a filled background.
     background = pygame.surface.Surface(size).convert()
     background.fill(BACK_COLOR)
+
+    # --------------------------------------------------------- #
     # Load the background image and resize it.
-    back_img = pygame.image.load(FNAME_BACKGROUND).convert()
-    back_size = back_img.get_rect().size
-    back_size_ratio = back_size[0] / back_size[1]
-    screen_ratio = size[0] / size[1]
-    if back_size_ratio < screen_ratio:
-        back_size = (int(size[1] * back_size_ratio), size[1])
-    else:
-        back_size = (size[0], int(size[0] / back_size_ratio))
-    back_img = pygame.transform.scale(back_img, back_size)
-    blit_pos = back_img.get_rect()
-    blit_pos.center = background.get_rect().center
-    background.blit(back_img, blit_pos)
+    # --------------------------------------------------------- #
+
+    #back_img = pygame.image.load(FNAME_BACKGROUND).convert()
+    #back_size = back_img.get_rect().size
+    #back_size_ratio = back_size[0] / back_size[1]
+    #screen_ratio = size[0] / size[1]    
+    #if back_size_ratio < screen_ratio:
+    #    back_size = (int(size[1] * back_size_ratio), size[1])
+    #else:
+    #    back_size = (size[0], int(size[0] / back_size_ratio))
+    #back_img = pygame.transform.scale(back_img, back_size)
+    #blit_pos = back_img.get_rect()
+    #blit_pos.center = background.get_rect().center
+    #background.blit(back_img, (100,100)) #blit_pos)
+    
+    # --------------------------------------------------------- #
+    # END SECTION
+    # --------------------------------------------------------- #
+
     # Set the initial state.
     keep_running = True
     min_to_count = DEFAULT_TIME

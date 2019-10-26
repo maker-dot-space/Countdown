@@ -36,4 +36,4 @@ animation_speed = 150
 animation_lenght = 3.5
 
 # Default starting point for the countdown (min).
-default_time = 30
+default_time = 3
