@@ -82,24 +82,11 @@ class CounterRender(object):
         self.rect.center = (self.screen_center[0] + TEXT_X,
                             self.screen_center[1] + TEXT_Y)
 
-class Counter(object):
+class Counter(object):    
     def __init__(self, min_to_count):
-
-        self.rect_to_clear = pygame.display.get_surface().get_rect()
-        font_height = self.rect_to_clear.height // SCREEN_FONT_RATIO
-        self.fnt = pygame.font.Font(FNAME_FONT, font_height)
-        self.alarm_image = pygame.image.load(FNAME_ALARM).convert()
-        self.alarm_image.set_colorkey((255, 255, 255), pygame.RLEACCEL)
-        screen_rect = pygame.display.get_surface().get_rect()
-
-        # --------------------------------------------------------- #
-        # Next Line Controls where the Counter will appear on screen
-        self.screen_center = (200,100) #screen_rect.center #(100,100)
-        # --------------------------------------------------------- #
-
         self.min_to_count = min_to_count
-        self.speed = ANIMATION_SPEED
-        self.teta = 0
+        self.sec_elapsed = int(0)
+        self.s = 30
 
     def set_counter(self, min_to_count):
         self.min_to_count = min_to_count
@@ -107,62 +94,25 @@ class Counter(object):
     def start(self):
         self.start_time = time.time()
 
-    def sec_lapsed(self):
-        return int(time.time() - self.start_time)
-
     def time_left(self):
-
-        sec_elapsed = time.time() - self.start_time
-        print(sec_elapsed)
-        return int(self.min_to_count * 60 - sec_elapsed)
-
-    def draw(self, surf):
-
-        rects = self.rect_to_clear
-        self.rect_to_clear = surf.blit(self.image, self.rect)
-        return rects
-
-    def clear(self, surf, background):
-
-        surf.set_clip(self.rect_to_clear)
-        surf.blit(background, (0, 0))
-        surf.set_clip()
+        self.sec_elapsed = time.time() - self.start_time
+        print(self.sec_elapsed)        
+        return int(self.min_to_count * 60 - self.sec_elapsed)
 
     def update(self, state, dt):
-
+        self.s = self.s - 1
         if state in ('idle', 'counting', 'resume'):
             if state == 'idle':
-                s = self.min_to_count * 60
+                self.s = self.min_to_count * 60
             elif state == 'resume':
                 #self.start_time = time.time()
                 #s = PAUSE_SECS
                 #s = 10
-                s = self.time_left()
+                self.s = self.time_left()
                 state = 'counting'
             elif state == 'counting':
-                s = self.time_left()                
-                
-            h = s // 3600
-            # Seconds left.
-            s = s % 3600
-            m = s // 60
-            s = s % 60
-            # Convertion to string.
-            h = str(h) if h > 9 else '0' + str(h)
-            m = str(m) if m > 9 else '0' + str(m)
-            s = str(s) if s > 9 else '0' + str(s)
-            text = h + ':' + m + ':' + s
-            
-            # Next Line Controls Countdown Timer Color
-            #TEXT_COLOR = (102,255,0)
-            if TEXT_BACK_COLOR:
-                self.image = self.fnt.render(text, True, TEXT_COLOR,
-                                             TEXT_BACK_COLOR)
-            else:
-                self.image = self.fnt.render(text, True, TEXT_COLOR)
-            self.rect = self.image.get_rect()
-            self.rect.center = (self.screen_center[0] + TEXT_X,
-                                self.screen_center[1] + TEXT_Y)
+                self.s = self.time_left()                
+
         elif state == 'ringing':
             # Conpute the position in degree.
             self.teta = self.teta + self.speed * dt / 1000.0
@@ -192,27 +142,6 @@ def main():
     background = pygame.surface.Surface(size).convert()
     background.fill(BACK_COLOR)
 
-    # --------------------------------------------------------- #
-    # Load the background image and resize it.
-    # --------------------------------------------------------- #
-
-    #back_img = pygame.image.load(FNAME_BACKGROUND).convert()
-    #back_size = back_img.get_rect().size
-    #back_size_ratio = back_size[0] / back_size[1]
-    #screen_ratio = size[0] / size[1]    
-    #if back_size_ratio < screen_ratio:
-    #    back_size = (int(size[1] * back_size_ratio), size[1])
-    #else:
-    #    back_size = (size[0], int(size[0] / back_size_ratio))
-    #back_img = pygame.transform.scale(back_img, back_size)
-    #blit_pos = back_img.get_rect()
-    #blit_pos.center = background.get_rect().center
-    #background.blit(back_img, (100,100)) #blit_pos)
-    
-    # --------------------------------------------------------- #
-    # END SECTION
-    # --------------------------------------------------------- #
-
     # Set the initial state.
     keep_running = True
     min_to_count = DEFAULT_TIME
@@ -240,11 +169,6 @@ def main():
                         else:
                             counter.start()
                             state = 'counting'
-
-
-                            
-                        
-                        
                         
                     elif event.key == K_UP:
                         min_to_count += 1
@@ -273,10 +197,8 @@ def main():
                 pygame.mixer.music.stop()
                 keep_running = False
 
-        #counter.update(state, dt)
-        #counter.clear(screen, background)        
-        #rects = counter.draw(screen)
-        counterRender.update(min_to_count*60)
+        counter.update(state, dt)
+        counterRender.update(counter.s)
         counterRender.clear(screen, background)
         rects = counterRender.draw(screen)
 
