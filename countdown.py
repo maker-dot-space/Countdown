@@ -1,24 +1,29 @@
 from __future__ import division
 import time
 import os
-import ConfigParser
+import configparser
 import pygame
+from threading import Timer
 from pygame.locals import *
 
+main_dir = os.path.split(os.path.abspath(__file__))[0]
+data_dir = os.path.join(main_dir, "data")
 
-config = ConfigParser.RawConfigParser()
-config.readfp(open(os.path.join('data', 'config.txt')))
-FNAME_BACKGROUND = os.path.join('data', config.get('options',
+#os.path.join(data_dir, name)
+
+config = configparser.ConfigParser()
+config.read_file(open(os.path.join(data_dir, 'config.txt')))
+FNAME_BACKGROUND = os.path.join(data_dir, config.get('options',
                                                    'fname_background'))
-FNAME_ALARM = os.path.join('data', config.get('options', 'fname_alarm'))
-FNAME_AUDIO = os.path.join('data', config.get('options', 'fname_audio'))
-FNAME_FONT = os.path.join('data', config.get('options', 'fname_font'))
+FNAME_ALARM = os.path.join(data_dir, config.get('options', 'fname_alarm'))
+FNAME_AUDIO = os.path.join(data_dir, config.get('options', 'fname_audio'))
+FNAME_FONT = os.path.join(data_dir, config.get('options', 'fname_font'))
 BACK_COLOR = pygame.colordict.THECOLORS[config.get('options', 'back_color')]
 TEXT_COLOR = pygame.colordict.THECOLORS[config.get('options', 'text_color')]
 try:
     TEXT_BACK_COLOR = pygame.colordict.THECOLORS[config.get('options',
                                                             'text_back_color')]
-except ConfigParser.NoOptionError:
+except configparser.NoOptionError:
     TEXT_BACK_COLOR = None
 TEXT_X = config.getint('options', 'text_x')
 TEXT_Y = -config.getint('options', 'text_y')
@@ -27,11 +32,8 @@ ANIMATION_SPEED = config.getint('options', 'animation_speed')
 ANIMATION_LENGHT = config.getfloat('options', 'animation_lenght')
 DEFAULT_TIME = config.getint('options', 'default_time')
 
-
-class Counter(object):
-
-    def __init__(self, min_to_count):
-
+class CounterRender(object):
+    def __init__(self, s):
         self.rect_to_clear = pygame.display.get_surface().get_rect()
         font_height = self.rect_to_clear.height // SCREEN_FONT_RATIO
         self.fnt = pygame.font.Font(FNAME_FONT, font_height)
@@ -44,21 +46,74 @@ class Counter(object):
         self.screen_center = screen_rect.center #(100,100)
         # --------------------------------------------------------- #
 
+        self.speed = ANIMATION_SPEED
+        self.teta = 0
+
+    def draw(self, surf):
+        rects = self.rect_to_clear
+        self.rect_to_clear = surf.blit(self.image, self.rect)
+        return rects
+
+    def clear(self, surf, background):
+        surf.set_clip(self.rect_to_clear)
+        surf.blit(background, (0, 0))
+        surf.set_clip()
+
+    def update(self, s):
+        h = s // 3600
+        # Seconds left.
+        s = s % 3600
+        m = s // 60
+        s = s % 60
+        # Convertion to string.
+        h = str(h) if h > 9 else '0' + str(h)
+        m = str(m) if m > 9 else '0' + str(m)
+        s = str(s) if s > 9 else '0' + str(s)
+        text = h + ':' + m + ':' + s
+        
+        # Next Line Controls Countdown Timer Color
+        #TEXT_COLOR = (102,255,0)
+        if TEXT_BACK_COLOR:
+            self.image = self.fnt.render(text, True, TEXT_COLOR,
+                                            TEXT_BACK_COLOR)
+        else:
+            self.image = self.fnt.render(text, True, TEXT_COLOR)
+        self.rect = self.image.get_rect()
+        self.rect.center = (self.screen_center[0] + TEXT_X,
+                            self.screen_center[1] + TEXT_Y)
+
+class Counter(object):
+    def __init__(self, min_to_count):
+
+        self.rect_to_clear = pygame.display.get_surface().get_rect()
+        font_height = self.rect_to_clear.height // SCREEN_FONT_RATIO
+        self.fnt = pygame.font.Font(FNAME_FONT, font_height)
+        self.alarm_image = pygame.image.load(FNAME_ALARM).convert()
+        self.alarm_image.set_colorkey((255, 255, 255), pygame.RLEACCEL)
+        screen_rect = pygame.display.get_surface().get_rect()
+
+        # --------------------------------------------------------- #
+        # Next Line Controls where the Counter will appear on screen
+        self.screen_center = (200,100) #screen_rect.center #(100,100)
+        # --------------------------------------------------------- #
+
         self.min_to_count = min_to_count
         self.speed = ANIMATION_SPEED
         self.teta = 0
 
     def set_counter(self, min_to_count):
-
         self.min_to_count = min_to_count
 
     def start(self):
-
         self.start_time = time.time()
+
+    def sec_lapsed(self):
+        return int(time.time() - self.start_time)
 
     def time_left(self):
 
         sec_elapsed = time.time() - self.start_time
+        print(sec_elapsed)
         return int(self.min_to_count * 60 - sec_elapsed)
 
     def draw(self, surf):
@@ -75,11 +130,18 @@ class Counter(object):
 
     def update(self, state, dt):
 
-        if state in ('idle', 'counting'):
+        if state in ('idle', 'counting', 'resume'):
             if state == 'idle':
                 s = self.min_to_count * 60
-            elif state == 'counting':
+            elif state == 'resume':
+                #self.start_time = time.time()
+                #s = PAUSE_SECS
+                #s = 10
                 s = self.time_left()
+                state = 'counting'
+            elif state == 'counting':
+                s = self.time_left()                
+                
             h = s // 3600
             # Seconds left.
             s = s % 3600
@@ -156,6 +218,8 @@ def main():
     min_to_count = DEFAULT_TIME
     state = 'idle'
     counter = Counter(min_to_count)
+    counterRender = CounterRender(158)
+
     clock = pygame.time.Clock()
     # Enter the main loop.
     while keep_running:
@@ -168,16 +232,31 @@ def main():
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     keep_running = False
-            elif state == 'idle':
+            elif state in ('idle', 'pause'):
                 if event.type == KEYUP:
                     if event.key == K_RETURN:
-                        state = 'counting'
-                        counter.start()
+                        if state == 'pause':                    
+                            state = 'resume'
+                        else:
+                            counter.start()
+                            state = 'counting'
+
+
+                            
+                        
+                        
+                        
                     elif event.key == K_UP:
                         min_to_count += 1
                     elif event.key == K_DOWN:
                         min_to_count = max(0, min_to_count - 1)
+                
                 counter.set_counter(min_to_count)
+            elif state == 'counting':
+                if event.type == KEYUP:
+                    if event.key == K_p:
+                        state = 'pause'
+                        
         # State machine.
         if state == 'counting':
             sec_left = counter.time_left()
@@ -193,9 +272,14 @@ def main():
                 # Stop the sound alarm and quit after ANIMATION_LENGHT seconds.
                 pygame.mixer.music.stop()
                 keep_running = False
-        counter.update(state, dt)
-        counter.clear(screen, background)
-        rects = counter.draw(screen)
+
+        #counter.update(state, dt)
+        #counter.clear(screen, background)        
+        #rects = counter.draw(screen)
+        counterRender.update(min_to_count*60)
+        counterRender.clear(screen, background)
+        rects = counterRender.draw(screen)
+
         pygame.display.update(rects)
 
 if __name__ == '__main__':
